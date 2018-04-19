@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, minimal-ui" />
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <meta name="format-detection" content="telephone=no">
+  <title>菜鸟教程(runoob.com)</title>
+  <style>
+    .myPhone{
+      width: 200px;
+      height: 300px;
+      position: relative;
+      background-color: rgba(0, 0, 0, 0.5);
+    }
+    .myBox {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      padding-top: 100%;
+      border: 1px solid #333
+    }
+    .myBox #imgCanvas{
+      position: absolute;
+      top: 0;
+      left: 0;
+    }
+    
+  </style>
+</head>
+
+<body>
+  <input type="file" accept="*/image" id="add_file"/>
+  之前的图片：<span class="imgBox"><img id="oldImg" src="static/img/calligraphy2.png"/></span>
+  截图所得图片:<img id="myImg" style="background-color: pink"/>
+  <div class='myPhone'>
+    <!-- 图片渲染区域 -->
+    <canvas id="myCanvas" >
+        您的浏览器不支持 HTML5 canvas 标签。</canvas>
+    <!-- 截图区域 -->
+    <div class="myBox">
+      <canvas id="imgCanvas">
+          您的浏览器不支持 HTML5 canvas 标签。</canvas>
+    </div>
+  </div>
+  <button id='rotate'>旋转</button>
+  <button id="cutOut">剪裁</button>
+  <button id="plus">放大</button>
+  <button id="reduce">减小</button>
+  <script>
+    window.onload = function (e) {
+      document.getElementById("add_file").onchange = function (node) {
+        file=node.target.files[0]; 
+        var url = null;
+        if (window.createObjectURL != undefined) { // basic
+            url = window.createObjectURL(file);
+        } else if (window.URL != undefined) { // mozilla(firefox)
+            url = window.URL.createObjectURL(file);
+        } else if (window.webkitURL != undefined) { // webkit or chrome
+            url = window.webkitURL.createObjectURL(file);
+        } 
+        setImg(url);
+      }
+      var img = document.getElementById("oldImg"); // 剪裁前的图片
+      var myCanvas = document.getElementById("myCanvas");
+      var imgCanvas = document.getElementById("imgCanvas");
+      var myImg = document.getElementById("myImg");
+      var ctx = myCanvas.getContext("2d");
+      var imgC = imgCanvas.getContext("2d");
+
+      // 设置图片渲染区域的宽高
+      myCanvas.width= document.getElementsByClassName("myPhone")[0].offsetWidth;
+      myCanvas.height= document.getElementsByClassName("myPhone")[0].offsetHeight;
+      // 设置图片的宽高
+      if(img.width<=img.height){// 竖图
+        img.width=myCanvas.width;
+      }else{ //横图
+        img.height=myCanvas.height;
+      }
+      // 设置图片剪裁区域的位置、宽高
+      var myBox=document.getElementsByClassName("myBox")[0];
+      myBox.style.marginTop = -myBox.offsetHeight/2 + "px";
+      imgCanvas.width= myBox.offsetWidth;
+      imgCanvas.height= myBox.offsetHeight;
+      ctx.drawImage(img, (myCanvas.width-img.width)/2, (myCanvas.height-img.height)/2,img.width,img.height);
+      // 上下拖动的距离
+      var yStart=0,yEnd=0,y=(myCanvas.height-myCanvas.width)/2,yFlag=false;
+      //旋转
+      document.getElementById("rotate").onclick = function () {
+        console.log('旋转', ctx.translate)
+        ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); // 清空画布
+        ctx.translate(myCanvas.width / 2, myCanvas.height / 2); // 中心旋转
+        ctx.rotate(90 * Math.PI / 180); // 旋转90
+        ctx.translate(-myCanvas.width / 2, -myCanvas.height / 2); // 返回原点
+        ctx.drawImage(img,(myCanvas.width-img.width)/2, (myCanvas.height-img.height)/2,img.width,img.height); // 重新绘制图像
+        cutClick()
+      }
+      imgCanvas.onmousedown=function(event){
+        var e = event || window.event;
+        yStart=e.screenY;
+        yFlag=true;
+        console.log('开始移动')
+      }
+      imgCanvas.onmousemove=function(event){
+        var e = event || window.event;
+        if(yFlag){
+          console.log('移动中')
+          yEnd=e.screenY;
+          if(Math.abs(yEnd-yStart)<(myCanvas.height-myCanvas.width)/2){ // 区间内可移动
+            myBox.style.marginTop = -myBox.offsetHeight/2+yEnd-yStart + "px";
+            y=(myCanvas.height-myCanvas.width)/2+yEnd-yStart;
+            cutClick()
+          }
+        }
+      }
+      imgCanvas.onmouseup=function(event){
+        yFlag=false;
+        console.log('移动结束')
+      }
+      //剪裁
+      document.getElementById("cutOut").onclick = function () {
+        var cutImg=ctx.getImageData(0,y, imgCanvas.offsetWidth,imgCanvas.offsetHeight) // 截取一个正方形
+        imgC.putImageData(cutImg,0,0,0,0, imgCanvas.offsetWidth,imgCanvas.offsetHeight); // 把截取得到的图像渲染到新的Canvas里
+        myImg.src= imgCanvas.toDataURL("image/png"); // 通过新的Canvas拿到img base64 url
+      }
+      //放大
+      document.getElementById("plus").onclick = function () {
+        ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); // 清空画布
+        ctx.translate(myCanvas.width / 2, myCanvas.height / 2); // 中心旋转
+        ctx.scale(2,2);
+        ctx.translate(-myCanvas.width / 2, -myCanvas.height / 2); // 返回原点
+        ctx.drawImage(img,(myCanvas.width-img.width)/2, (myCanvas.height-img.height)/2,img.width,img.height); // 重新绘制图像
+      }
+      document.getElementById("reduce").onclick = function () {
+        ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); // 清空画布
+        ctx.translate(myCanvas.width / 2, myCanvas.height / 2); // 中心旋转
+        ctx.scale(0.5,0.5);
+        ctx.translate(-myCanvas.width / 2, -myCanvas.height / 2); // 返回原点
+        ctx.drawImage(img,(myCanvas.width-img.width)/2, (myCanvas.height-img.height)/2,img.width,img.height); // 重新绘制图像
+      }
+      function setImg(imgUrl){
+        document.getElementsByClassName('imgBox')[0].innerHTML='<img id="oldImg" src="'+imgUrl+'"/>'
+        img = document.getElementById("oldImg"); // 剪裁前的图片
+        img.onload=function(){
+          console.log(img.width,img.height)
+            // 设置图片的宽高
+          if(img.width<=img.height){// 竖图
+            img.width=myCanvas.width;
+          }else{ //横图
+            img.height=myCanvas.height;
+          }
+          ctx.clearRect(0, 0, myCanvas.width, myCanvas.height); // 清空画布
+          ctx.drawImage(img,(myCanvas.width-img.width)/2, (myCanvas.height-img.height)/2,img.width,img.height); // 重新绘制图像
+          cutClick()
+        }
+      }
+      function cutClick(){
+        var e = document.createEvent("MouseEvents");
+        e.initEvent("click", true, true);　　　　　　　　　　　　　　//这里的click可以换成你想触发的行为
+        document.getElementById("cutOut").dispatchEvent(e);　　　//这里的clickME可以换成你想触发行为的DOM结点
+      }
+    }
+  </script>
+
+</body>
+
+</html>
